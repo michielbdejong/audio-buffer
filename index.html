@@ -30,9 +30,51 @@ pre.innerHTML = myScript.innerHTML;
 var channels = 2;
 // Create an empty two second stereo buffer at the
 // sample rate of the AudioContext
-var frameCount = audioCtx.sampleRate * 2.0;
+var frameCount = audioCtx.sampleRate * 50.0;
 
 var myArrayBuffer = audioCtx.createBuffer(2, frameCount, audioCtx.sampleRate);
+
+var freqFactor = 2 * 3.14 / audioCtx.sampleRate;
+
+var timeFactor = 1 / audioCtx.sampleRate;
+
+var amplitudes = {
+  100: [0.1, 0.4],
+  200: [0.2, 0.3],
+  400: [0.3, 0.2],
+  800: [0.4, 0.1]
+};
+
+function makeAudio1(channel, frame) {
+  //make bend go from 0 to 1 and back to 0 repeatedly:
+  var bend = (frame * timeFactor * 20) % 2;
+  if (bend > 1) {
+    bend = 2 - bend;
+  }
+  if (bend < 0 || bend > 1) {
+    throw new Error('bend for '+frame+' is '+bend);
+  }
+  var freq = 50;
+  if (frame % 1000 === 0) {
+    console.log(freq);
+  }
+  return Math.sin(frame * freqFactor * freq) * (amplitudes[100][0] * (1-bend) + amplitudes[100][1] * bend)
+    + Math.sin(frame * freqFactor * (freq + 2)) * (amplitudes[200][0] * (1-bend) + amplitudes[200][1] * bend)
+    + Math.sin(frame * freqFactor * (freq + 4)) * (amplitudes[400][0] * (1-bend) + amplitudes[400][1] * bend)
+    + Math.sin(frame * freqFactor * (freq + 6)) * (amplitudes[800][0] * (1-bend) + amplitudes[800][1] * bend);
+}
+
+function makeAudio2(channel, frame) {
+  var freq = 400 + (frame * timeFactor * 100);//goes from 400 to 600 in two seconds
+  if (channel === 1) {
+    freq = 1000 - freq;
+  }
+  var amplitude = (frame * timeFactor);
+  if (amplitude > 1) {
+    amplitude = 2 - amplitude;
+  }
+  return Math.sin(frame * freqFactor * freq) * amplitude;
+}
 
 button.onclick = function() {
   // Fill the buffer with white noise;
@@ -43,7 +85,7 @@ button.onclick = function() {
    for (var i = 0; i < frameCount; i++) {
      // Math.random() is in [0; 1.0]
      // audio needs to be in [-1.0; 1.0]
-     nowBuffering[i] = Math.random() * 2 - 1;
+     nowBuffering[i] = (10000 * makeAudio1(channel, i) + makeAudio2(channel, i)) / 10001;
    }
   }
 
